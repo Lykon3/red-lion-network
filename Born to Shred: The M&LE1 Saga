@@ -656,3 +656,78 @@
     </div>
 </body>
 </html>
+
+<span class="character">@BoomerMetalhead42:</span>
+                            "Back in my day, at least Milli Vanilli *looked* their age."
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-content">
+                        <p class="thought-bubble">
+                            <span class="character">M&LE1 (thinking):</span>
+                            "The internet canceled me... but also made me a legend. That’s just late-stage capitalism, baby."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 9 -->
+        <div class="page">
+            <h2 class="page-title">PAGE 9 – "EXILE IN SYNTH VALLEY"</h2>
+            <div class="panels">
+                <div class="panel">
+                    <div class="panel-content">
+                        <p class="scene-description">M&LE1 walks alone through a neon wasteland of canceled influencers and ex-crypto DJs.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-content">
+                        <div class="thought-bubble">
+                            <span class="character">M&LE1 (thinking):</span>
+                            "Maybe the only way to be real… is to glitch so hard you loop back to analog."
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 10 -->
+        <div class="page">
+            <h2 class="page-title">PAGE 10 – "SHRED REDEMPTION"</h2>
+            <div class="panels">
+                <div class="panel">
+                    <div class="panel-content">
+                        <p class="scene-description">A rooftop at golden hour. M&LE1 plugs into a dusty amp powered by hope and loose wires.</p>
+                        <div class="dialogue">
+                            <span class="character">M&LE1:</span>
+                            "This one’s for the glitch in all of us."
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-content">
+                        <p class="scene-description">He plays. The world listens. Reality wobbles slightly.</p>
+                        <div class="caption">"THE SOUND OF A GENERATION... kind of."</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 11: Finale -->
+        <div class="page finale">
+            <h2>EPILOGUE – THE RETURN OF THE VIBE</h2>
+            <div class="epilogue">
+                <p>M&LE1 disappeared shortly after his last rooftop performance. Some say he joined a reverse-aging commune in Oregon. Others claim he lives on in AI-assisted guitar loops scattered across the blockchain.</p>
+                <p class="rainbow-text">But once in a while, a new prodigy uploads with strangely familiar phrasing and oddly adult sadness in their solos...</p>
+            </div>
+            <div class="credits">
+                <p><strong>Written by:</strong> That Weird Feeling You Get When You Miss a Meme While It's Still Loading</p>
+                <p><strong>Illustrated by:</strong> Midjourney x Copilot x Basement Vibes</p>
+                <p><strong>Special Thanks:</strong> To the algorithm gods, false nostalgia, and every adult who ever pretended to be a prodigy online.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
