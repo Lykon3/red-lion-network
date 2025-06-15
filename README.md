@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="banner.jpg" alt="Red Lion Network banner" width="100%">
+</p>
+
 # Red Lion Network
 
 An open-source investigation exposing the architecture, actors, and operations behind the Red Lion influence ecosystem.
