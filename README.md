@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="banner.jpg" width="100%" alt="Red Lion Network banner">
+  <img src="banner.jpg" width="100%" alt="banner_dark.png">
 </p>
 
 # 🦁 RED LION NETWORK 😈👿
