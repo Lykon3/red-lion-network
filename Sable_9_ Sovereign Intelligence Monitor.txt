@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Sable_9: Sovereign Intelligence Monitor</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Plotly.js for charting -->
+   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+   <!-- Viz.js for rendering Graphviz DOT language -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.es.js" type="module"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js" type="module"></script>
+
+   <!-- Google Fonts: Inter -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+   <style>
+       /* Custom styles to match the dark theme and font */
+       body {
+           font-family: 'Inter', sans-serif;
+           background-color: #111827; /* gray-900 */
+       }
+       /* Style for the Graphviz SVG output */
+       #network-state-container svg {
+           width: 100%;
+           height: auto;
+       }
+   </style>
+</head>
+<body class="bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8">
+
+   <div class="max-w-7xl mx-auto">
+       <!-- Header -->
+       <header class="mb-8">
+           <h1 class="text-3xl sm:text-4xl font-bold text-cyan-400 tracking-tight">Sable_9</h1>
+           <p class="text-lg text-gray-400">Sovereign Intelligence Monitor</p>
+       </header>
+
+       <!-- Main Dashboard Grid -->
+       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+           <!-- Left Column: Risk Score & Network State -->
+           <div class="lg:col-span-1 flex flex-col gap-6">
+               <!-- System Collapse Risk -->
+               <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                   <h2 class="text-lg font-semibold text-gray-400 mb-2">System Collapse Risk</h2>
+                   <p class="text-5xl font-bold text-red-500">
+                       <span id="risk-score">76.50</span>%
+                   </p>
+                   <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
+                       <div id="risk-progress" class="bg-red-500 h-2.5 rounded-full" style="width: 76.5%"></div>
+                   </div>
+               </div>
+
+               <!-- Network Activity Monitor -->
+               <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                   <h2 class="text-lg font-semibold text-gray-400 mb-4">Network Activity Monitor</h2>
+                   <div id="network-state-container" class="flex items-center justify-center min-h-[200px]">
+                       <!-- Graphviz chart will be rendered here -->
+                       <div class="text-gray-400">Loading graph...</div>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Right Column: Belief Coherence Map -->
+           <div class="lg:col-span-2 bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+               <h2 class="text-lg font-semibold text-gray-400 mb-4">Belief Coherence Map (Φ(x, τ))</h2>
+               <div id="belief-topology-chart" class="w-full h-[400px] md:h-[550px]"></div>
+           </div>
+
+       </div>
+   </div>
+
+   <script type="module">
+       // Ensure the DOM is fully loaded before running scripts
+       document.addEventListener('DOMContentLoaded', () => {
+           
+           // --- 1. Risk Score Calculation ---
+           // A simple function to simulate the risk score, as in the python script.
+           function calculateRiskScore() {
+               const riskValue = 76.5;
+               // Update the text and progress bar
+               document.getElementById('risk-score').innerText = riskValue.toFixed(2);
+               document.getElementById('risk-progress').style.width = `${riskValue}%`;
+           }
+
+           // --- 2. Belief Coherence Map (Heatmap) ---
+           // This function creates the heatmap using Plotly.js.
+           function createBeliefTopology() {
+               // Generate random data for the heatmap
+               const z_data = Array.from({ length: 20 }, () => 
+                   Array.from({ length: 20 }, () => Math.random())
+               );
+               
+               const data = [{
+                   z: z_data,
+                   type: 'heatmap',
+                   colorscale: 'Viridis',
+                   showscale: false // Hides the color bar for a cleaner look
+               }];
+
+               const layout = {
+                   title: {
+                       text: '', // Title is handled by the HTML structure
+                   },
+                   paper_bgcolor: 'rgba(0,0,0,0)', // Transparent background
+                   plot_bgcolor: 'rgba(0,0,0,0)',
+                   margin: { t: 5, r: 5, b: 30, l: 30 },
+                   xaxis: {
+                       color: '#9CA3AF', // gray-400
+                       gridcolor: '#374151', // gray-700
+                       zeroline: false,
+                   },
+                   yaxis: {
+                       color: '#9CA3AF', // gray-400
+                       gridcolor: '#374151', // gray-700
+                       zeroline: false,
+                   },
+                   autosize: true
+               };
+               
+               const config = {
+                   responsive: true, // Make the chart responsive
+                   displayModeBar: false // Hide the mode bar
+               };
+
+               Plotly.newPlot('belief-topology-chart', data, layout, config);
+           }
+
+           // --- 3. Network State (Graphviz) ---
+           // Renders the directed graph from a DOT string using Viz.js.
+           async function renderNetworkState() {
+               const dotString = `
+               digraph G {
+                   graph [bgcolor="transparent", fontname="Inter"];
+                   node [shape=box, style="filled,rounded", color="#4B5563", fillcolor="#1F2937", fontcolor="#E5E7EB", fontname="Inter"];
+                   edge [color="#6B7281", fontname="Inter"];
+
+                   "Red Lion Network" -> "Platform Algorithms";
+                   "Platform Algorithms" -> "Narrative Control";
+                   "Narrative Control" -> "Belief Collapse";
+                   "Foreign Influence" -> "Traditionalist International";
+                   "Traditionalist International" -> "Dark Money Shells";
+                   "Dark Money Shells" -> "Psychological Warfare";
+               }
+               `;
+               
+               const container = document.getElementById('network-state-container');
+               try {
+                   const viz = new Viz();
+                   const element = await viz.renderSVGElement(dotString);
+                   container.innerHTML = ''; // Clear the 'Loading...' text
+                   container.appendChild(element);
+               } catch(error) {
+                   container.innerHTML = `<div class="text-red-400">Error rendering graph: ${error.message}</div>`;
+                   console.error('Viz.js rendering failed:', error);
+               }
+           }
+
+           // --- Initial calls ---
+           calculateRiskScore();
+           createBeliefTopology();
+           renderNetworkState();
+
+           // --- Handle window resizing for the Plotly chart ---
+           window.addEventListener('resize', () => {
+               Plotly.Plots.resize('belief-topology-chart');
+           });
+       });
+   </script>
+</body>
+</html>
