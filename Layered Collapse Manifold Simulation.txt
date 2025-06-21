@@ -1,0 +1,397 @@
+﻿import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import networkx as nx
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+
+# --- Helper Classes for Simulation ---
+# These classes replace the missing/undefined components from the original script.
+
+@dataclass
+class TensorComponentGrid:
+   """
+   A simplified model for the internal state of a single ideological layer.
+   Manages actor states, their relationships (metric), and evolution over time.
+   """
+   actors: List[str]
+   τ: float = 0.0
+   χ: np.ndarray = None  # Bond dimensions (ideological coherence)
+   metric: np.ndarray = None # g_ij, ideological distance between actors
+
+   def __post_init__(self):
+       """Initialize arrays based on the number of actors."""
+       num_actors = len(self.actors)
+       # Start with perfect coherence (χ=1) and a corresponding metric
+       self.χ = np.ones(num_actors)
+       self.update_metric()
+
+   def evolve_bond_dimensions(self, τ_step: int, τ_c: float, σ: float):
+       """
+       Evolve the ideological coherence (χ) of each actor over time.
+       We use a logistic decay function to simulate the degradation of coherence.
+       """
+       self.τ += τ_step
+       # As time τ approaches the critical time τ_c, coherence collapses.
+       decay = 1.0 / (1.0 + np.exp((self.τ - τ_c) / σ))
+       self.χ = np.ones(len(self.actors)) * decay + np.random.normal(0, 0.05, len(self.actors))
+       self.χ = np.clip(self.χ, 0, 1) # Ensure coherence is between 0 and 1
+
+   def update_metric(self):
+       """
+       Update the metric tensor based on the current bond dimensions (χ).
+       The distance between actors increases as their coherence decays.
+       A stronger metric (lower value) means actors are ideologically closer.
+       """
+       num_actors = len(self.actors)
+       self.metric = np.zeros((num_actors, num_actors))
+       for i in range(num_actors):
+           for j in range(i + 1, num_actors):
+               # The metric is based on the average coherence of two actors.
+               # High coherence -> strong bond (low metric value).
+               val = (self.χ[i] + self.χ[j]) / 2.0
+               self.metric[i, j] = self.metric[j, i] = val
+       
+   def compute_curvature(self) -> np.ndarray:
+       """
+       Compute the Ricci curvature scalar for each actor.
+       In this simplified model, high curvature corresponds to low average coherence
+       with other actors, indicating ideological isolation and stress.
+       """
+       num_actors = len(self.actors)
+       # Prevent division by zero if metric is all zeros
+       mean_connections = np.sum(self.metric, axis=1) / (num_actors - 1 if num_actors > 1 else 1)
+       curvature_scalar = 1.0 / (mean_connections + 1e-6)
+       return np.diag(curvature_scalar)
+
+@dataclass
+class EnhancedCollapseManifold:
+   """
+   Represents a single ideological layer, containing its actors and internal state.
+   """
+   actors: List[str]
+   tcg: TensorComponentGrid = field(init=False)
+   nullification_pressure: np.ndarray = field(init=False)
+
+   def __post_init__(self):
+       """Initialize the tensor grid and nullification pressure for the layer."""
+       self.tcg = TensorComponentGrid(self.actors)
+       self.nullification_pressure = np.zeros(len(self.actors))
+
+# --- Main Simulation Classes ---
+
+@dataclass
+class LayerConfig:
+   """Configuration for each ideological layer."""
+   name: str
+   actors: List[str]
+   color: str
+   resonance_type: str  # 'judicial', 'executive', 'mythic'
+
+class LayeredCollapseManifold:
+   """Multi-layer cascade topology with cross-layer resonance."""
+   
+   def __init__(self, layer_configs: List[LayerConfig]):
+       """Initialize layers and interlayer couplings."""
+       self.layers: Dict[str, EnhancedCollapseManifold] = {}
+       self.layer_configs: Dict[str, LayerConfig] = {lc.name: lc for lc in layer_configs}
+       
+       for config in layer_configs:
+           manifold = EnhancedCollapseManifold(config.actors)
+           self.layers[config.name] = manifold
+       
+       self.interlayer_couplings: Dict[Tuple[str, str], np.ndarray] = {}
+       self.cascade_history: List[Dict] = []
+       self.phase_history: List[Tuple[float, float]] = [] # For phase space plot
+
+   def define_interlayer_coupling(self, layer_a: str, layer_b: str, coupling_matrix: np.ndarray):
+       """Set coupling tensor between layers."""
+       key = (layer_a, layer_b)
+       self.interlayer_couplings[key] = coupling_matrix
+       
+   def propagate_cascade(self, τ: float) -> Tuple[List[Dict], float, Dict]:
+       """Propagate nullification pressure across layers."""
+       cascade_events = []
+       total_magnitude = 0
+       hottest_resonance = {'strength': -1}
+
+       for (A, B), Γ in self.interlayer_couplings.items():
+           # Get curvature from source layer A
+           R_A = self.layers[A].tcg.compute_curvature().diagonal()
+           
+           # Resonance-weighted pressure injection
+           if self.layer_configs[A].resonance_type == 'mythic':
+               amplification = 1.5 # Mythic layer has amplified propagation
+           elif self.layer_configs[A].resonance_type == 'judicial':
+               amplification = 1.2 # Judicial has focused effects
+           else:
+               amplification = 1.0
+           
+           # Calculate pressure transfer vector
+           pressure_injection = np.dot(Γ, R_A) * amplification
+           
+           # Apply with nonlinear threshold
+           threshold = 0.5
+           if np.max(pressure_injection) > threshold:
+               self.layers[B].nullification_pressure += pressure_injection
+               magnitude = np.sum(pressure_injection)
+               total_magnitude += magnitude
+               cascade_events.append({
+                   'from': A, 'to': B,
+                   'magnitude': magnitude,
+                   'τ': τ
+               })
+
+               # Identify the strongest actor-to-actor resonance in this event
+               source_actor_idx = np.argmax(R_A)
+               target_actor_idx = np.argmax(pressure_injection)
+               strength = pressure_injection[target_actor_idx]
+               if strength > hottest_resonance['strength']:
+                   hottest_resonance = {
+                       'from_layer': A, 'from_actor': self.layer_configs[A].actors[source_actor_idx],
+                       'to_layer': B, 'to_actor': self.layer_configs[B].actors[target_actor_idx],
+                       'strength': strength
+                   }
+
+       return cascade_events, total_magnitude, hottest_resonance
+   
+   def detect_criticality(self) -> Dict[str, float]:
+       """Check each layer for approaching critical transitions."""
+       criticality_scores = {}
+       for name, manifold in self.layers.items():
+           # Indicator 1: Bond collapse (how much coherence has been lost)
+           bond_collapse = 1.0 - manifold.tcg.χ.mean()
+           
+           # Indicator 2: Pressure spikes (volatility in the layer)
+           pressure_spike = manifold.nullification_pressure.std()
+           
+           # Indicator 3: Max curvature (most stressed actor)
+           curvature_max = np.abs(manifold.tcg.compute_curvature()).max()
+           
+           # Composite criticality score
+           criticality = (bond_collapse + 0.5 * pressure_spike + 0.3 * curvature_max) / 3.0
+           criticality_scores[name] = np.clip(criticality, 0, 1)
+           
+       return criticality_scores
+   
+   def step_all(self, τ_step: int = 1):
+       """Evolve all layers and propagate cascades."""
+       # Step each layer independently
+       for layer in self.layers.values():
+           layer.tcg.evolve_bond_dimensions(τ_step, τ_c=50, σ=10)
+           layer.tcg.update_metric()
+       
+       # Propagate cross-layer effects
+       current_τ = list(self.layers.values())[0].tcg.τ
+       cascade_events, total_magnitude, hotspots = self.propagate_cascade(current_τ)
+       
+       # Record history for plotting
+       self.cascade_history.extend(cascade_events)
+       avg_criticality = np.mean(list(self.detect_criticality().values()))
+       self.phase_history.append((avg_criticality, total_magnitude))
+       
+       return cascade_events, hotspots
+
+   def inject_shock(self, layer_name: str, actor_index: int, magnitude: float):
+       """
+       NEW: Injects a shock into a specific actor in a layer.
+       This simulates an external event destabilizing an actor.
+       """
+       if layer_name in self.layers:
+           print(f"\n--- SHOCK INJECTED: Applying {magnitude:.2f} pressure to {self.layer_configs[layer_name].actors[actor_index]} in {layer_name} layer ---")
+           self.layers[layer_name].nullification_pressure[actor_index] += magnitude
+
+class MultiLayerVisualizer:
+   """Visualize the complete multi-layer collapse topology."""
+   
+   def __init__(self, layered_manifold: LayeredCollapseManifold, figsize=(18, 12)):
+       self.manifold = layered_manifold
+       self.fig = plt.figure(figsize=figsize, constrained_layout=True)
+       self.setup_layout()
+       
+   def setup_layout(self):
+       """Create grid layout for multi-layer visualization."""
+       gs = GridSpec(3, 3, figure=self.fig)
+       self.layer_axes = {
+           'judicial': self.fig.add_subplot(gs[0, 0]),
+           'executive': self.fig.add_subplot(gs[0, 1]),
+           'mythic': self.fig.add_subplot(gs[0, 2])
+       }
+       self.cascade_ax = self.fig.add_subplot(gs[1, :])
+       self.criticality_ax = self.fig.add_subplot(gs[2, :2])
+       self.phase_ax = self.fig.add_subplot(gs[2, 2]) # NEW: Phase space plot
+       
+   def plot_layer_state(self, layer_name: str, ax):
+       """Plot individual layer topology."""
+       ax.clear()
+       manifold = self.manifold.layers[layer_name]
+       config = self.manifold.layer_configs[layer_name]
+       
+       positions = self.compute_positions(manifold.tcg.metric)
+       
+       G = nx.Graph()
+       labels = {}
+       for i, actor in enumerate(config.actors):
+           G.add_node(i, pos=positions[i])
+           labels[i] = actor
+
+       for i in range(len(config.actors)):
+           for j in range(i + 1, len(config.actors)):
+               # Only draw edges for non-trivial ideological bonds
+               if manifold.tcg.metric[i, j] > 0.1:
+                   G.add_edge(i, j, weight=manifold.tcg.metric[i, j])
+
+       pos = nx.get_node_attributes(G, 'pos')
+       node_sizes = 300 + 1500 * manifold.nullification_pressure / (np.max(manifold.nullification_pressure) + 1e-6)
+       edges = G.edges()
+       weights = [G[u][v]['weight'] * 5 for u, v in edges]
+       
+       nx.draw_networkx_edges(G, pos, ax=ax, width=weights, edge_color=config.color, alpha=0.6)
+       nx.draw_networkx_nodes(G, pos, ax=ax, node_color=config.color, node_size=node_sizes, alpha=0.9, edgecolors='k')
+       nx.draw_networkx_labels(G, pos, ax=ax, labels=labels, font_size=9, font_weight='bold')
+       
+       ax.set_title(f"{layer_name.capitalize()} Layer (τ={manifold.tcg.τ:.0f})")
+       ax.set_xlim(-1.5, 1.5)
+       ax.set_ylim(-1.5, 1.5)
+       ax.axis('off')
+
+   def plot_cascade_network(self):
+       """Visualize cross-layer cascade propagation."""
+       self.cascade_ax.clear()
+       meta_G = nx.DiGraph()
+       layer_positions = {'judicial': (-1, 0), 'executive': (0, 1), 'mythic': (1, 0)}
+       for name in self.manifold.layer_configs:
+           meta_G.add_node(name, pos=layer_positions.get(name))
+           
+       cascade_strengths = {}
+       # Aggregate strengths of recent cascade events
+       for event in self.manifold.cascade_history[-20:]:
+           edge = (event['from'], event['to'])
+           cascade_strengths[edge] = cascade_strengths.get(edge, 0) + event['magnitude']
+       
+       pos = nx.get_node_attributes(meta_G, 'pos')
+       criticality = self.manifold.detect_criticality()
+       node_colors = [plt.cm.Reds(criticality.get(node, 0)) for node in meta_G.nodes()]
+       
+       nx.draw_networkx_nodes(meta_G, pos, ax=self.cascade_ax, node_color=node_colors, node_size=3000, edgecolors='black', linewidths=2)
+       nx.draw_networkx_labels(meta_G, pos, ax=self.cascade_ax, font_size=14, font_weight='bold')
+       
+       for edge, strength in cascade_strengths.items():
+           meta_G.add_edge(*edge)
+           nx.draw_networkx_edges(meta_G, pos, ax=self.cascade_ax, edgelist=[edge],
+                                  width=min(strength * 2, 10), edge_color='purple', alpha=0.7,
+                                  arrows=True, arrowsize=25, connectionstyle='arc3,rad=0.1')
+
+       self.cascade_ax.set_title("Cross-Layer Cascade Network")
+       self.cascade_ax.axis('off')
+       
+   def plot_criticality_timeline(self):
+       """Track criticality evolution across layers."""
+       self.criticality_ax.clear()
+       criticality_scores = self.manifold.detect_criticality()
+       layer_names = list(criticality_scores.keys())
+       scores = list(criticality_scores.values())
+       colors = [self.manifold.layer_configs[name].color for name in layer_names]
+
+       self.criticality_ax.bar(layer_names, scores, color=colors, edgecolor='k')
+       self.criticality_ax.axhspan(0.7, 1.0, alpha=0.2, color='red', label='Critical Zone')
+       
+       self.criticality_ax.set_ylim(0, 1)
+       self.criticality_ax.set_ylabel('Criticality Score')
+       self.criticality_ax.set_title('Layer Criticality Levels')
+       self.criticality_ax.legend()
+       
+   def plot_phase_space(self):
+       """NEW: Plot the trajectory of the system in phase space."""
+       self.phase_ax.clear()
+       if not self.manifold.phase_history:
+           return
+
+       data = np.array(self.manifold.phase_history)
+       x, y = data[:, 0], data[:, 1]
+       
+       self.phase_ax.plot(x, y, '-o', markersize=3, color='gray', alpha=0.5, label='Trajectory')
+       # Highlight the current state
+       self.phase_ax.plot(x[-1], y[-1], 'o', markersize=10, color='red', label='Current State')
+       
+       self.phase_ax.set_title("Phase Space Trajectory")
+       self.phase_ax.set_xlabel("Average System Criticality")
+       self.phase_ax.set_ylabel("Total Cascade Magnitude")
+       self.phase_ax.legend()
+       self.phase_ax.grid(True, linestyle='--', alpha=0.6)
+
+   def compute_positions(self, metric):
+       """Helper for position computation using MDS."""
+       from sklearn.manifold import MDS
+       num_actors = metric.shape[0]
+       if num_actors < 2: return np.array([[0,0]])
+       # We want close actors to have a low distance, so we invert the metric
+       distances = np.max(metric) - metric
+       np.fill_diagonal(distances, 0)
+       
+       mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42, normalized_stress=False)
+       positions = mds.fit_transform(distances)
+       return positions
+   
+   def update_full_visualization(self):
+       """Update all plots."""
+       self.fig.suptitle("Layered Collapse Manifold Simulation", fontsize=16, fontweight='bold')
+       for name in self.layer_axes:
+           if name in self.manifold.layers:
+               self.plot_layer_state(name, self.layer_axes[name])
+       
+       self.plot_cascade_network()
+       self.plot_criticality_timeline()
+       self.plot_phase_space() # Update the new plot
+
+# --- Main Simulation Setup and Execution ---
+
+if __name__ == '__main__':
+   # 1. Initialize the multi-layer system
+   layer_configs = [
+       LayerConfig('judicial', ['Leo', 'Thomas', 'Alito', 'Roberts'], 'royalblue', 'judicial'),
+       LayerConfig('executive', ['Trump', 'Miller', 'Vance', 'Musk'], 'crimson', 'executive'),
+       LayerConfig('mythic', ['Bannon', 'Putin', 'Dugin', 'Thiel'], 'purple', 'mythic')
+   ]
+
+   # 2. Create manifold
+   multi_manifold = LayeredCollapseManifold(layer_configs)
+
+   # 3. Define interlayer couplings (how layers influence each other)
+   # Mythic → Executive: Strong ideological influence
+   multi_manifold.define_interlayer_coupling('mythic', 'executive', np.random.rand(4, 4) * 0.8)
+   # Executive → Judicial: Policy pressure
+   multi_manifold.define_interlayer_coupling('executive', 'judicial', np.random.rand(4, 4) * 0.6)
+   # Judicial → Mythic: Legitimation feedback
+   multi_manifold.define_interlayer_coupling('judicial', 'mythic', np.random.rand(4, 4) * 0.4)
+
+   # 4. Initialize Visualizer
+   viz = MultiLayerVisualizer(multi_manifold)
+   plt.ion() # Turn on interactive mode for live plotting
+   plt.show()
+
+   # 5. Run evolution with visualization
+   for τ in range(100):
+       # Inject a shock at a specific time to demonstrate the feature
+       if τ == 30:
+           multi_manifold.inject_shock(layer_name='executive', actor_index=1, magnitude=2.0) # Shock to Miller
+
+       cascade_events, hotspots = multi_manifold.step_all()
+       
+       # Update visualization periodically
+       if τ % 5 == 0:
+           viz.update_full_visualization()
+           plt.draw()
+           plt.pause(0.1)
+       
+       # Report cascade events and resonance hotspots as they happen
+       if cascade_events:
+           print(f"\nτ={τ}: CASCADE DETECTED")
+           for event in cascade_events:
+               print(f"  {event['from']} → {event['to']}: magnitude {event['magnitude']:.3f}")
+           if hotspots['strength'] > 0:
+                print(f"  RESONANCE HOTSPOT: {hotspots['from_actor']}({hotspots['from_layer']}) → {hotspots['to_actor']}({hotspots['to_layer']}) with strength {hotspots['strength']:.3f}")
+
+   print("\nSimulation Finished.")
+   plt.ioff() # Turn off interactive mode
+   plt.show() # Keep the final plot window open

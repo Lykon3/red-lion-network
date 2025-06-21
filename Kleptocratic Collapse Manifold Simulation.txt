@@ -1,0 +1,355 @@
+﻿import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import networkx as nx
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+
+# --- Helper Classes for Simulation ---
+
+@dataclass
+class TensorComponentGrid:
+   """
+   A simplified model for the internal state of a single ideological layer.
+   Manages actor states, their relationships (metric), and evolution over time.
+   """
+   actors: List[str]
+   τ: float = 0.0
+   χ: np.ndarray = None  # Bond dimensions (ideological coherence)
+   metric: np.ndarray = None # g_ij, ideological distance between actors
+   entanglement_map: np.ndarray = None # For kleptocratic entanglement
+
+   def __post_init__(self):
+       """Initialize arrays based on the number of actors."""
+       self.resize_arrays(len(self.actors))
+       self.χ.fill(1.0)
+       self.update_metric()
+
+   def resize_arrays(self, new_size: int):
+       """Resizes all internal numpy arrays to accommodate new actors."""
+       old_size = 0 if self.χ is None else len(self.χ)
+       
+       # Resize χ (coherence)
+       new_chi = np.ones(new_size)
+       if self.χ is not None: new_chi[:old_size] = self.χ
+       self.χ = new_chi
+
+       # Resize metric
+       new_metric = np.zeros((new_size, new_size))
+       if self.metric is not None: new_metric[:old_size, :old_size] = self.metric
+       self.metric = new_metric
+
+       # Resize entanglement_map
+       new_entanglement = np.zeros((new_size, new_size))
+       if self.entanglement_map is not None: new_entanglement[:old_size, :old_size] = self.entanglement_map
+       self.entanglement_map = new_entanglement
+       
+   def evolve_bond_dimensions(self, τ_step: int, τ_c: float, σ: float, compression_rate: float):
+       """
+       Evolve the ideological coherence (χ) over time, now affected by temporal compression.
+       """
+       self.τ += τ_step * compression_rate # Time itself is accelerated
+       decay = 1.0 / (1.0 + np.exp((self.τ - τ_c) / σ))
+       self.χ = np.ones(len(self.actors)) * decay + np.random.normal(0, 0.05, len(self.actors))
+       self.χ = np.clip(self.χ, 0, 1)
+
+   def update_metric(self):
+       """Update the metric tensor based on the current bond dimensions (χ)."""
+       num_actors = len(self.actors)
+       self.metric = np.zeros((num_actors, num_actors))
+       for i in range(num_actors):
+           for j in range(i + 1, num_actors):
+               val = (self.χ[i] + self.χ[j]) / 2.0
+               self.metric[i, j] = self.metric[j, i] = val
+       
+   def compute_curvature(self) -> np.ndarray:
+       """Compute the Ricci curvature scalar for each actor."""
+       num_actors = len(self.actors)
+       mean_connections = np.sum(self.metric, axis=1) / (num_actors - 1 if num_actors > 1 else 1)
+       curvature_scalar = 1.0 / (mean_connections + 1e-6)
+       return np.diag(curvature_scalar)
+
+@dataclass
+class EnhancedCollapseManifold:
+   """Represents a single ideological layer, containing its actors and internal state."""
+   actors: List[str]
+   tcg: TensorComponentGrid = field(init=False)
+   nullification_pressure: np.ndarray = field(init=False)
+
+   def __post_init__(self):
+       """Initialize the tensor grid and nullification pressure for the layer."""
+       self.tcg = TensorComponentGrid(self.actors)
+       self.nullification_pressure = np.zeros(len(self.actors))
+
+   def resize_for_new_actors(self, num_new_actors: int):
+       """Resizes the nullification pressure array."""
+       old_size = len(self.nullification_pressure)
+       new_pressure = np.zeros(old_size + num_new_actors)
+       new_pressure[:old_size] = self.nullification_pressure
+       self.nullification_pressure = new_pressure
+
+# --- Main Simulation Classes ---
+
+@dataclass
+class LayerConfig:
+   """Configuration for each ideological layer."""
+   name: str
+   actors: List[str]
+   color: str
+   resonance_type: str
+
+class LayeredCollapseManifold:
+   """Base class for the multi-layer topology."""
+   def __init__(self, layer_configs: List[LayerConfig]):
+       self.layers: Dict[str, EnhancedCollapseManifold] = {}
+       self.layer_configs: Dict[str, LayerConfig] = {lc.name: lc for lc in layer_configs}
+       for config in layer_configs:
+           self.layers[config.name] = EnhancedCollapseManifold(config.actors)
+       self.cascade_history: List[Dict] = []
+   # Base class methods would go here...
+
+class KleptocraticCollapseManifold(LayeredCollapseManifold):
+   """Enhanced manifold with kleptocratic entanglement dynamics."""
+   
+   def __init__(self, layer_configs: List[LayerConfig]):
+       super().__init__(layer_configs)
+       print("Initializing Kleptocratic Collapse Manifold...")
+       
+       # Redefine layers and actors for kleptocratic model
+       self.layer_configs['financial'] = LayerConfig('financial', ['CRC_Advisors', '85_Fund'], 'gold', 'financial')
+       self.layer_configs['ideological'] = LayerConfig('ideological', ['Integralism', 'Bannon'], 'darkblue', 'mythic')
+       self.layers['financial'] = EnhancedCollapseManifold(self.layer_configs['financial'].actors)
+       self.layers['ideological'] = EnhancedCollapseManifold(self.layer_configs['ideological'].actors)
+       self.layer_names = list(self.layers.keys()) # Store an ordered list of layer names
+
+       self.add_foreign_actors()
+       self.K_ent = self.build_kleptocratic_tensor()
+       
+       self.temporal_compression = np.zeros(len(self.layers))
+       self.entropy_injection_history = {name: [] for name in self.layer_names}
+
+   def add_foreign_actors(self):
+       """Inject foreign nodes into the financial and ideological topologies."""
+       print("Injecting foreign actors...")
+       foreign_actors = {
+           'financial': ['RU_Oligarchs', 'UAE_SPACs', 'CN_SOEs', 'Bolsonaro_PAC'],
+           'ideological': ['Dugin', 'Kirill', 'Xi_Thought', 'Olavo']
+       }
+       for layer_name, actors_to_add in foreign_actors.items():
+           if layer_name in self.layers:
+               manifold = self.layers[layer_name]
+               manifold.tcg.actors.extend(actors_to_add)
+               
+               # Resize arrays in both the manifold and its tcg
+               num_new = len(actors_to_add)
+               manifold.resize_for_new_actors(num_new)
+               manifold.tcg.resize_arrays(len(manifold.tcg.actors))
+               print(f"  Added {len(actors_to_add)} actors to {layer_name} layer. New total: {len(manifold.tcg.actors)}")
+
+   def build_kleptocratic_tensor(self):
+       """Construct the dark money flow tensor, K_ent."""
+       print("Building Kleptocratic Entanglement Tensor (K_ent)...")
+       K = {
+           'RU_to_CRC': {'source': 'RU_Oligarchs', 'target': 'CRC_Advisors', 'path': ['CyprusShell', 'ArtMarket', 'DAF'], 'magnitude': 0.8, 'opacity': 0.9, 'temporal_acceleration': 2.5},
+           'UAE_to_85': {'source': 'UAE_SPACs', 'target': '85_Fund', 'path': ['TechSPAC', 'DelawareCorp', 'PR_Firm'], 'magnitude': 0.6, 'opacity': 0.7, 'temporal_acceleration': 1.8},
+           'CN_to_Integralist': {'source': 'CN_SOEs', 'target': 'Integralism', 'path': ['ThinkTankPartnership', 'Academic_Grant'], 'magnitude': 0.7, 'opacity': 0.8, 'temporal_acceleration': 1.5},
+           'BR_to_Bannon': {'source': 'Bolsonaro_PAC', 'target': 'Bannon', 'path': ['CryptoWallet', 'Megachurch', 'ReligiousGrant'], 'magnitude': 0.9, 'opacity': 0.95, 'temporal_acceleration': 3.0}
+       }
+       return K
+
+   def identify_layer(self, actor_name: str) -> str:
+       """Helper to find which layer an actor belongs to."""
+       for name, manifold in self.layers.items():
+           if actor_name in manifold.tcg.actors:
+               return name
+       return None
+
+   def get_actor_index(self, layer_name: str, actor_name: str) -> int:
+       """Helper to get an actor's index within a layer."""
+       try:
+           return self.layers[layer_name].tcg.actors.index(actor_name)
+       except (KeyError, ValueError):
+           return None
+
+   def compute_temporal_compression(self, base_evolution_rate: float) -> Tuple[float, float]:
+       """Calculate how kleptocratic flows compress ideological evolution time."""
+       total_compression_factor = 1.0
+       for flow in self.K_ent.values():
+           democratic_friction = 1.0 / (1.0 - flow['opacity'] + 1e-6)
+           acceleration = flow['temporal_acceleration'] * flow['magnitude']
+           total_compression_factor += (acceleration * democratic_friction)
+       
+       # We take a root to moderate the explosive effect for simulation stability
+       effective_compression = np.power(total_compression_factor, 1/len(self.K_ent))
+       compressed_rate = base_evolution_rate * effective_compression
+       return compressed_rate, effective_compression
+
+   def inject_kleptocratic_entropy(self, τ: float):
+       """Model how dark money injects entropy (nullification pressure) into the system."""
+       for flow in self.K_ent.values():
+           target_layer = self.identify_layer(flow['target'])
+           if target_layer:
+               entropy_pulse = flow['magnitude'] * flow['opacity'] * (1 + np.sin(τ / 10))
+               target_idx = self.get_actor_index(target_layer, flow['target'])
+               if target_idx is not None:
+                   self.layers[target_layer].nullification_pressure[target_idx] += entropy_pulse
+                   self.temporal_compression[self.layer_names.index(target_layer)] += flow['temporal_acceleration'] * flow['magnitude']
+
+   def step_all(self, τ_step: int, compression_rate: float):
+       """Evolve all layers, now driven by kleptocratic dynamics."""
+       current_τ = list(self.layers.values())[0].tcg.τ
+       self.inject_kleptocratic_entropy(current_τ)
+       
+       for name, layer in self.layers.items():
+           layer.tcg.evolve_bond_dimensions(τ_step, τ_c=50, σ=10, compression_rate=compression_rate)
+           layer.tcg.update_metric()
+           # Record entropy history for plotting
+           self.entropy_injection_history[name].append(np.std(layer.nullification_pressure))
+
+
+class TemporalCompressionVisualizer:
+   """Visualize how kleptocratic flows compress democratic time."""
+   
+   def __init__(self, manifold: KleptocraticCollapseManifold):
+       self.manifold = manifold
+       self.fig = plt.figure(figsize=(16, 12), constrained_layout=True)
+       gs = GridSpec(2, 2, figure=self.fig)
+       self.axes = {
+           'flows': self.fig.add_subplot(gs[0, 0]),
+           'field': self.fig.add_subplot(gs[0, 1]),
+           'entropy': self.fig.add_subplot(gs[1, 0]),
+           'eschatology': self.fig.add_subplot(gs[1, 1])
+       }
+
+   def visualize_kleptocratic_flows(self, ax):
+       """Visualize the dark money pathways."""
+       ax.clear()
+       G = nx.DiGraph()
+       pos = {'RU_Oligarchs': (-3, 2), 'UAE_SPACs': (-3, 1), 'CN_SOEs': (-3, 0), 'Bolsonaro_PAC': (-3, -1),
+              'CRC_Advisors': (3, 2), '85_Fund': (3, 1), 'Integralism': (3, 0), 'Bannon': (3, -1),
+              'DAF': (0, 2.5), 'Delaware_Corp': (0, 1.5), 'Think_Tank': (0, 0.5), 'Crypto': (0, -0.5)}
+
+       for node, (x, y) in pos.items():
+           is_source = 'Oligarchs' in node or 'SPACs' in node or 'SOEs' in node or 'PAC' in node
+           is_intermediate = node in ['DAF', 'Delaware_Corp', 'Think_Tank', 'Crypto']
+           color = 'darkred' if is_source else 'gray' if is_intermediate else 'darkblue'
+           size = 1200 if is_source or not is_intermediate else 600
+           ax.scatter(x, y, s=size, c=color, alpha=0.9, edgecolors='black', zorder=5)
+           ax.text(x, y - 0.35, node.replace('_', ' '), ha='center', fontsize=8, weight='bold', zorder=6)
+
+       for flow in self.manifold.K_ent.values():
+           source_pos, target_pos = pos[flow['source']], pos[flow['target']]
+           intensity = flow['magnitude'] * flow['opacity']
+           ax.annotate('', xy=target_pos, xytext=source_pos,
+                       arrowprops=dict(arrowstyle='->', lw=intensity * 6, color='red', alpha=0.6,
+                                     connectionstyle=f"arc3,rad={np.random.uniform(0.2, 0.4)}"))
+           mid_x, mid_y = (source_pos[0] + target_pos[0]) / 2, (source_pos[1] + target_pos[1]) / 2
+           ax.text(mid_x, mid_y, f"×{flow['temporal_acceleration']:.1f}", fontsize=11, color='white', weight='bold',
+                   bbox=dict(boxstyle="circle", facecolor='red', alpha=0.8, pad=0.4))
+       
+       ax.set_title("Kleptocratic Entanglement Flows & Temporal Acceleration")
+       ax.axis('off')
+
+   def plot_temporal_field(self, ax):
+       """Visualize the temporal compression field."""
+       ax.clear()
+       X, Y = np.meshgrid(np.linspace(-3, 3, 50), np.linspace(-3, 3, 50))
+       Z = np.ones_like(X)
+       for flow in self.manifold.K_ent.values():
+           # Distortion originates from source and focuses on target
+           source_pos, target_pos = self.manifold.get_actor_index('financial', flow['source']), self.manifold.get_actor_index('financial', flow['target'])
+           if source_pos is None or target_pos is None: continue # Skip if actor not found
+           cx, cy = np.linspace(-2, 2, 4)[source_pos], 2
+           tx, ty = np.linspace(-2, 2, 2)[self.manifold.get_actor_index('financial', flow['target'])], -2
+           strength = flow['temporal_acceleration'] * flow['magnitude']
+           dist = np.sqrt((X - tx)**2 + (Y - ty)**2)
+           Z += strength * np.exp(-dist / 1.5)
+
+       im = ax.contourf(X, Y, Z, levels=20, cmap='inferno')
+       ax.contour(X, Y, Z, levels=10, colors='white', alpha=0.2, linewidths=0.5)
+       cs = ax.contour(X, Y, Z, levels=[np.mean(Z)+1.5*np.std(Z)], colors='cyan', linewidths=3)
+       if cs.allsegs[0]: # Check if contour was actually drawn
+           ax.clabel(cs, inline=True, fontsize=10, fmt='Critical Dilation')
+       ax.set_title("Temporal Compression Field")
+       ax.set_aspect('equal')
+       ax.axis('off')
+       
+   def plot_entropy_injection(self, ax):
+       """Show entropy accumulation over time."""
+       ax.clear()
+       for name, history in self.manifold.entropy_injection_history.items():
+           if not history: continue
+           ax.plot(history, label=f"{name} Layer", color=self.manifold.layer_configs[name].color, linewidth=2.5)
+       
+       ax.axhline(y=np.mean(history or [0]) + 2*np.std(history or [1]), color='red', linestyle='--', alpha=0.7)
+       ax.text(len(history or [1])*0.5, np.mean(history or [0]) + 2*np.std(history or [1]), "Phase Transition Threshold", color='red')
+       ax.set_xlabel("Time (τ)"); ax.set_ylabel("System Entropy (Std Dev of Pressure)"); ax.set_title("Kleptocratic Entropy Injection")
+       ax.legend(); ax.grid(True, alpha=0.3)
+       
+   def plot_synthetic_eschatology(self, ax):
+       """Visualize how foreign capital creates artificial end-times narratives."""
+       ax.clear()
+       events = [(10, "Normal Democratic Time", "royalblue"), (30, "First Kleptocratic Injection", "orange"),
+                 (50, "Temporal Compression Begins", "coral"), (70, "Synthetic Crisis Generation", "red"),
+                 (90, "Eschatological Acceleration", "black")]
+       ax.barh(range(len(events)), [e[0] for e in events], color=[e[2] for e in events], alpha=0.7)
+       for i, (time, event, color) in enumerate(events):
+           ax.text(time / 2, i, event, ha='center', va='center', fontsize=10, weight='bold', color='white')
+
+       ax.set_yticks([]); ax.set_xlabel("Objective Time"); ax.set_title("Synthetic Eschatology Timeline"); ax.set_xlim(0, 100)
+
+       # Add compression curve on twin axis
+       _, compression_factor = self.manifold.compute_temporal_compression(1.0)
+       τ = np.linspace(0, 100, 100)
+       compression = 1 + (compression_factor - 1) * (1 / (1 + np.exp(-(τ - 50) / 10)))
+       ax2 = ax.twiny()
+       ax2.plot(compression, range(len(events)), 'w--', linewidth=2, label='Time Compression')
+       ax2.set_xlabel("Time Compression Factor (Effective Speed)", color='cyan')
+       ax2.tick_params(axis='x', labelcolor='cyan')
+
+
+if __name__ == '__main__':
+   # Initialize with placeholder configs that will be replaced
+   klepto_manifold = KleptocraticCollapseManifold(layer_configs=[])
+   
+   print("\n=== KLEPTOCRATIC TEMPORAL ANALYSIS ===\n")
+   base_rate = 1.0
+   compressed_rate, compression_factor = klepto_manifold.compute_temporal_compression(base_rate)
+   print(f"Base Democratic Evolution Rate: {base_rate:.2f}")
+   print(f"Kleptocratic Compression Factor: {compression_factor:.2f}x")
+   print(f"Effective Evolution Rate under Kleptocratic Pressure: {compressed_rate:.2f}")
+   print(f"\nTime to Ideological Capture:")
+   print(f"  Without dark money: {50/base_rate:.1f} years (simulation units)")
+   print(f"  With kleptocratic flows: {50/compressed_rate:.1f} years (simulation units)")
+   print(f"  Resulting Acceleration: {compression_factor:.1f}x faster")
+
+   viz = TemporalCompressionVisualizer(klepto_manifold)
+   plt.ion(); plt.show()
+
+   # Run simulation
+   for τ in range(100):
+       klepto_manifold.step_all(τ_step=1, compression_rate=compressed_rate)
+       if τ % 10 == 0:
+           print(f"Simulating... τ = {τ}")
+           viz.visualize_kleptocratic_flows(viz.axes['flows'])
+           viz.plot_temporal_field(viz.axes['field'])
+           viz.plot_entropy_injection(viz.axes['entropy'])
+           viz.plot_synthetic_eschatology(viz.axes['eschatology'])
+           plt.draw(); plt.pause(0.1)
+   
+   print("\nSimulation Finished.")
+   plt.ioff()
+   
+   # Final Vulnerability Analysis
+   print("\n=== CRITICAL VULNERABILITY ANALYSIS ===")
+   for layer_name, manifold in klepto_manifold.layers.items():
+       if not manifold.nullification_pressure.any(): continue
+       max_pressure_idx = np.argmax(manifold.nullification_pressure)
+       actor = manifold.tcg.actors[max_pressure_idx]
+       pressure = manifold.nullification_pressure[max_pressure_idx]
+       print(f"\n--- {layer_name.upper()} LAYER ---")
+       print(f"  Most Vulnerable Node: {actor}")
+       print(f"  Accumulated Nullification Pressure: {pressure:.3f}")
+       print(f"  Temporal Compression Contribution: {klepto_manifold.temporal_compression[klepto_manifold.layer_names.index(layer_name)]:.2f}x")
+   
+   plt.show()
