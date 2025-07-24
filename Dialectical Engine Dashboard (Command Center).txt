@@ -1,0 +1,305 @@
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { 
+   ChevronsRight, AlertTriangle, Server, Users, Radio, Rss, Target, GitBranch, 
+   ShieldCheck, Zap, MapPin, TrendingUp, Sliders, MessageSquare, ShieldAlert 
+} from 'lucide-react';
+
+// --- MOCK DATA & SIMULATION CONFIG ---
+const CITIES_DATA = {
+   Austin: {
+       commercial_vacancy: 0.28, tech_layoffs: 15000, budget_deficit: -110, protest_density: 0.65,
+       risk_factor: 0.72, pathway: "office_occupations",
+       organizer_networks: ["tenant_union@austin.org", "atx_mutual_aid@proton.me", "sunrise_austin@gmail.com"],
+   },
+   Denver: {
+       commercial_vacancy: 0.22, tech_layoffs: 9500, budget_deficit: -85, protest_density: 0.55,
+       risk_factor: 0.68, pathway: "general_strike",
+       organizer_networks: ["dsa_chapter@denver.org", "denver_unemployed@riseup.net", "colorado_workers_unite@proton.me"],
+   },
+   Portland: {
+       commercial_vacancy: 0.19, tech_layoffs: 7800, budget_deficit: -50, protest_density: 0.78,
+       risk_factor: 0.61, pathway: "office_occupations",
+       organizer_networks: ["street_medics@portland.signal.org", "pdx_housing_action@proton.me"],
+   }
+};
+
+const REVOLUTIONARY_PLAYBOOK = {
+   general_strike: ["Mobilize transit & teacher unions", "Coordinate rolling sickouts", "Establish strike funds", "Organize community support kitchens"],
+   office_occupations: ["Scout vacant corporate buildings", "Organize public housing assemblies", "Establish legal support network", "Coordinate with unhoused advocates"],
+   municipal_bankruptcy: ["Launch debt audit campaign", "Form neighborhood councils", "Propose participatory budgeting", "Demand public ownership of utilities"]
+};
+
+// --- CORE & ENHANCED COMPONENTS ---
+
+// 1. CrisisAnalysisEngine (with Countdown Timer)
+const CrisisAnalysisEngine = ({ data, cf, isBifurcation }) => {
+   const pathway = data.pathway;
+   const actions = REVOLUTIONARY_PLAYBOOK[pathway] || [];
+   const [timeRemaining, setTimeRemaining] = useState(72 * 60 * 60);
+   const [timerActive, setTimerActive] = useState(false);
+
+   useEffect(() => {
+       if (isBifurcation && !timerActive) { setTimeRemaining(72 * 60 * 60); setTimerActive(true); }
+       else if (!isBifurcation) { setTimerActive(false); }
+       let interval;
+       if (timerActive) {
+           interval = setInterval(() => { setTimeRemaining(prev => { if (prev <= 1) { clearInterval(interval); setTimerActive(false); return 0; } return prev - 1; }); }, 1000);
+       }
+       return () => clearInterval(interval);
+   }, [isBifurcation, timerActive]);
+
+   const formatTime = (seconds) => {
+       const d = Math.floor(seconds / (3600 * 24));
+       const h = Math.floor((seconds % (3600 * 24)) / 3600);
+       const m = Math.floor((seconds % 3600) / 60);
+       const s = seconds % 60;
+       return `${d}d ${h}h ${m}m ${s}s`;
+   };
+
+   return (
+       <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 space-y-4 h-full">
+           <h3 className="text-lg font-semibold text-cyan-300 flex items-center"><Zap size={18} className="mr-2" /> Analysis & Tactical Engine</h3>
+           <div className="bg-gray-900 p-3 rounded-md border-l-4 border-orange-400">
+               <p className="text-sm text-gray-400">Corporate Flight Index (CF)</p>
+               <p className={`text-3xl font-bold ${cf > 0.6 ? 'text-red-500 animate-pulse' : 'text-orange-400'}`}>{cf.toFixed(3)}</p>
+           </div>
+           <div className={`bg-gray-900 p-3 rounded-md border-l-4 ${isBifurcation ? 'border-red-500' : 'border-green-400'}`}>
+               <p className="text-sm text-gray-400">Phase Transition Prediction</p>
+               <div className="flex items-center mt-1">
+                   <AlertTriangle size={20} className={`${isBifurcation ? 'text-red-500 animate-ping absolute' : 'text-green-400'} mr-3`} />
+                   <AlertTriangle size={20} className={`${isBifurcation ? 'text-red-500' : 'text-green-400'} mr-3`} />
+                   <p className={`text-xl font-bold ${isBifurcation ? 'text-red-500' : 'text-green-400'}`}>{isBifurcation ? "CRISIS WINDOW DETECTED" : "System Stable"}</p>
+               </div>
+           </div>
+           {isBifurcation && (
+               <div className="bg-gradient-to-b from-gray-900 via-red-900/50 to-gray-900 p-3 rounded-lg border border-red-600">
+                   <p className="text-sm text-red-300 uppercase font-bold text-center">Crisis Window Closes In</p>
+                   <p className="text-3xl font-bold text-white text-center mt-1 font-mono tracking-wider">{formatTime(timeRemaining)}</p>
+                   <div className="w-full bg-gray-700/50 h-2 rounded-full mt-2 overflow-hidden border border-black/20">
+                       <div className="bg-gradient-to-r from-red-500 to-orange-500 h-full rounded-full transition-all duration-1000 ease-linear" style={{ width: `${(timeRemaining / (72 * 3600)) * 100}%` }}></div>
+                   </div>
+               </div>
+           )}
+           {isBifurcation && (
+               <div className="bg-gradient-to-b from-red-900/50 to-red-800/50 p-4 rounded-lg border border-red-700">
+                   <p className="text-sm text-red-300 uppercase font-bold">Liberation Pathway Calculated</p>
+                   <p className="text-2xl font-bold text-white capitalize mt-1 mb-3">{pathway.replace('_', ' ')}</p>
+                   <ul className="space-y-2">{actions.map((action, index) => (<li key={index} className="flex items-start"><ChevronsRight size={16} className="text-red-300 mr-2 mt-1 flex-shrink-0" /><span className="text-red-100">{action}</span></li>))}</ul>
+               </div>
+           )}
+       </div>
+   );
+};
+
+// 2. Intervention Simulator
+const InterventionSimulator = ({ currentCF }) => {
+   const [selectedInterventions, setSelectedInterventions] = useState([]);
+   const [simulatedCF, setSimulatedCF] = useState(currentCF);
+   const interventions = useMemo(() => [
+       { id: 'rent_control', name: 'Rent Control', dampening: 0.15 }, { id: 'min_wage', name: '$20 Min Wage', dampening: 0.10 },
+       { id: 'clt', name: 'Community Land Trust', dampening: 0.12 }, { id: 'social_housing', name: 'Social Housing', dampening: 0.18 }
+   ], []);
+
+   useEffect(() => {
+       const totalDampening = selectedInterventions.reduce((acc, id) => { const i = interventions.find(i => i.id === id); return acc + (i?.dampening || 0); }, 0);
+       const effectiveDampening = totalDampening * (1 - totalDampening * 0.3);
+       setSimulatedCF(currentCF * (1 - effectiveDampening));
+   }, [selectedInterventions, currentCF, interventions]);
+
+   const toggleIntervention = (id) => { setSelectedInterventions(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+
+   return (
+       <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 h-full">
+           <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3"><Sliders size={18} className="mr-2" /> Intervention Simulator</h3>
+           <div className="space-y-2 mb-4">{interventions.map(i => (<label key={i.id} className="flex items-center cursor-pointer"><input type="checkbox" checked={selectedInterventions.includes(i.id)} onChange={() => toggleIntervention(i.id)} className="mr-2 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500" /><span className="text-sm text-gray-300">{i.name}</span><span className="ml-auto text-xs text-gray-500">-{(i.dampening * 100).toFixed(0)}%</span></label>))}</div>
+           <div className="bg-gray-900 p-3 rounded-md">
+               <p className="text-sm text-gray-400 mb-1">Simulated CF Score</p>
+               <div className="flex items-baseline justify-between">
+                   <p className={`text-2xl font-bold ${simulatedCF < 0.25 ? 'text-green-400' : 'text-orange-400'}`}>{simulatedCF.toFixed(3)}</p>
+                   <p className={`text-sm ${simulatedCF < currentCF ? 'text-green-400' : 'text-gray-500'}`}>{simulatedCF < currentCF ? '↓' : ''} {Math.abs(((currentCF - simulatedCF) / currentCF * 100)).toFixed(1)}%</p>
+               </div>
+               {simulatedCF < 0.25 && (<p className="text-xs text-green-400 mt-2">✓ Crisis averted with these interventions</p>)}
+           </div>
+       </div>
+   );
+};
+
+// 3. CollaborationPanel (NEW)
+const CollaborationPanel = () => (
+   <div className="bg-gray-800/50 rounded-lg p-4 border border-cyan-500/50 h-full">
+     <h3 className="text-lg font-semibold text-cyan-300 mb-2 flex items-center"><MessageSquare size={18} className="mr-2"/>Live Organizer Chat</h3>
+     <div className="h-48 overflow-y-auto mb-2 bg-gray-900/50 p-2 rounded text-sm space-y-2">
+       <p><span className="font-semibold text-red-400">@Anya:</span> Team B, confirm position at city hall?</p>
+       <p><span className="font-semibold text-green-400">@Ben:</span> Confirmed. We have eyes on the east entrance.</p>
+       <p><span className="font-semibold text-yellow-400">@Legal:</span> Reminder: write legal aid numbers on your arms.</p>
+       <p><span className="font-semibold text-red-400">@Anya:</span> Copy. All teams hold position.</p>
+     </div>
+     <input type="text" placeholder="Coordinate actions... (E2E Encrypted)" className="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:ring-cyan-500 focus:border-cyan-500 text-sm"/>
+   </div>
+);
+
+// 4. AlertBroadcaster (ENHANCED)
+const AlertBroadcaster = ({ isBifurcation, networks }) => {
+   const [broadcasting, setBroadcasting] = useState(false);
+   const [lastAlert, setLastAlert] = useState(null);
+   const [priority, setPriority] = useState('medium');
+   const sendAlert = () => { setBroadcasting(true); setTimeout(() => { setBroadcasting(false); setLastAlert(new Date()); }, 2000); };
+   
+   return (
+       <div className={`bg-gray-800/50 rounded-lg p-4 border ${isBifurcation ? 'border-red-600 animate-pulse' : 'border-gray-700'} h-full`}>
+           <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3"><Radio size={18} className="mr-2" /> Alert Broadcaster</h3>
+           <div className="space-y-3">
+               <div className="flex space-x-1 text-xs">
+                   {['low', 'medium', 'high'].map(level => (
+                       <button key={level} onClick={() => setPriority(level)} className={`w-full px-2 py-1 rounded capitalize transition-colors ${priority === level ? (level === 'high' ? 'bg-red-600 text-white' : level === 'medium' ? 'bg-orange-500 text-white' : 'bg-yellow-500 text-black') : 'bg-gray-700 hover:bg-gray-600'}`}>
+                           {level}
+                       </button>
+                   ))}
+               </div>
+               <textarea className="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 text-xs h-16 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Alert details..."/>
+               {lastAlert && (<p className="text-xs text-gray-500">Last alert: {lastAlert.toLocaleTimeString()}</p>)}
+               {isBifurcation && (<button onClick={sendAlert} disabled={broadcasting} className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors">{broadcasting ? '📡 BROADCASTING...' : '🚨 SEND EMERGENCY ALERT'}</button>)}
+           </div>
+       </div>
+   );
+};
+
+// 5. TacticalMap (ENHANCED)
+const TacticalMap = ({ city }) => {
+ const [layers, setLayers] = useState({ police: true, medical: true, protests: false });
+ return (
+   <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+       <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3"><MapPin size={18} className="mr-2" /> Tactical Map - {city}</h3>
+       <div className="relative bg-gray-900/70 rounded-lg border border-gray-700 h-48 flex items-center justify-center">
+           <p className="text-gray-600 text-2xl font-bold">GEOSPATIAL DATA</p>
+           <div className="absolute top-2 right-2 bg-gray-800/80 p-2 rounded-lg border border-gray-700">
+               {Object.keys(layers).map(layer => (
+                   <label key={layer} className="flex items-center text-xs text-gray-300 cursor-pointer">
+                       <input type="checkbox" checked={layers[layer]} onChange={() => setLayers(prev => ({...prev, [layer]: !prev[layer]}))} className="mr-2 h-3 w-3 rounded text-cyan-500 bg-gray-600 border-gray-500 focus:ring-cyan-600"/>
+                       <span className="capitalize">{layer}</span>
+                   </label>
+               ))}
+           </div>
+           <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent rounded-b-lg">
+               <p className="text-white font-bold text-sm">{city} Tactical Grid</p>
+           </div>
+       </div>
+   </div>
+ );
+};
+
+// 6. ValidationTracker (ENHANCED)
+const ValidationTracker = ({ city }) => {
+   const validationData = { Austin: { predicted: 0.72, actual: 0.69, accuracy: 92 }, Denver: { predicted: 0.68, actual: 0.71, accuracy: 89 }, Portland: { predicted: 0.61, actual: 0.58, accuracy: 95 } };
+   const data = validationData[city] || { predicted: 0, actual: 0, accuracy: 0 };
+   const historicalPatterns = [{ date: '2023-05', cf: 0.68, outcome: 'Strike' }, { date: '2023-02', cf: 0.71, outcome: 'Occupation' }];
+
+   return (
+       <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 h-full">
+           <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3"><TrendingUp size={18} className="mr-2" /> Model Validation</h3>
+           <div className="space-y-2 text-sm">
+               <div className="flex justify-between"><span className="text-gray-400">Predicted CF</span><span className="font-mono text-orange-400">{data.predicted.toFixed(2)}</span></div>
+               <div className="flex justify-between"><span className="text-gray-400">Actual CF</span><span className="font-mono text-orange-400">{data.actual.toFixed(2)}</span></div>
+               <div className="flex justify-between items-center"><span className="text-gray-400">Accuracy</span><span className={`font-mono font-bold ${data.accuracy > 90 ? 'text-green-400' : 'text-yellow-400'}`}>{data.accuracy}%</span></div>
+           </div>
+           <div className="mt-4 pt-4 border-t border-gray-700">
+               <h4 className="text-sm font-semibold text-cyan-300 mb-2">Historical Patterns</h4>
+               <ul className="space-y-1 text-xs">{historicalPatterns.map((p, i) => (<li key={i} className="flex justify-between items-center text-gray-400"><span>{p.date}</span><span>CF {p.cf.toFixed(2)} →</span><span className="font-bold text-yellow-400">{p.outcome}</span></li>))}</ul>
+           </div>
+       </div>
+   );
+};
+
+// 7. SystemStatus (ENHANCED)
+const SystemStatus = ({ cityData }) => (
+   <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 h-full">
+       <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3"><Server size={18} className="mr-2" /> System Status</h3>
+       <div className="space-y-3 text-sm">
+           <div className="flex justify-between items-center"><span className="text-gray-400 flex items-center"><GitBranch size={14} className="mr-2" />Stack</span><span className="font-mono text-green-400 bg-green-900/50 px-2 py-1 rounded text-xs">ONLINE</span></div>
+           <div className="flex justify-between items-center"><span className="text-gray-400 flex items-center"><Users size={14} className="mr-2" />Networks</span><span className="font-mono text-cyan-400 bg-cyan-900/50 px-2 py-1 rounded text-xs">{cityData.organizer_networks.length} Connected</span></div>
+       </div>
+       <div className="mt-4 pt-4 border-t border-gray-700">
+           <h4 className="text-sm font-semibold text-red-400 mb-2 flex items-center"><ShieldAlert size={16} className="mr-2"/>Security Checklist</h4>
+           <ul className="space-y-1 text-xs text-gray-300">
+               <li className="flex items-center"><input type="checkbox" className="mr-2 h-3 w-3 rounded text-red-500 bg-gray-600 border-gray-500 focus:ring-red-600" />All devices encrypted</li>
+               <li className="flex items-center"><input type="checkbox" className="mr-2 h-3 w-3 rounded text-red-500 bg-gray-600 border-gray-500 focus:ring-red-600" />Burner phones activated</li>
+           </ul>
+       </div>
+   </div>
+);
+
+
+// --- MAIN APP COMPONENT ---
+export default function App() {
+   const [activeCity, setActiveCity] = useState("Austin");
+   const [cityData, setCityData] = useState(CITIES_DATA[activeCity]);
+   const [lastUpdated, setLastUpdated] = useState(new Date());
+
+   useEffect(() => {
+       const interval = setInterval(() => {
+           setCityData(prevData => {
+               const fluctuation = (Math.random() - 0.5) * 0.02;
+               return {
+                   ...prevData,
+                   commercial_vacancy: Math.max(0.1, prevData.commercial_vacancy + fluctuation),
+                   tech_layoffs: prevData.tech_layoffs + Math.floor((Math.random() - 0.5) * 500),
+                   budget_deficit: prevData.budget_deficit + Math.floor((Math.random() - 0.5) * 5),
+               };
+           });
+           setLastUpdated(new Date());
+       }, 15000);
+       return () => clearInterval(interval);
+   }, [activeCity]);
+
+   const handleCityChange = (cityName) => { setActiveCity(cityName); setCityData(CITIES_DATA[cityName]); };
+
+   const { cf, isBifurcation } = useMemo(() => {
+       const computeLiveCF = (data) => (data.commercial_vacancy * 0.4 + Math.abs(data.budget_deficit / 500) * 0.4 + Math.abs(data.tech_layoffs / 50000) * 0.2);
+       const detectBifurcation = (cfValue, manifold) => (cfValue > 0.25 && (manifold.protest_density * 3 + manifold.risk_factor) > 2.0);
+       const calculatedCF = computeLiveCF(cityData);
+       const bifurcationStatus = detectBifurcation(calculatedCF, cityData);
+       return { cf: calculatedCF, isBifurcation: bifurcationStatus };
+   }, [cityData]);
+
+   return (
+       <main className="bg-gray-900 text-white min-h-screen font-sans p-4 sm:p-6 lg:p-8">
+           <div className="max-w-screen-2xl mx-auto">
+               <header className="mb-6 pb-4 border-b border-red-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                   <div>
+                       <h1 className="text-3xl font-bold text-red-500">Dialectical Nervous System</h1>
+                       <p className="text-gray-400">Revolutionary Command Center</p>
+                   </div>
+                   <div className="text-xs text-gray-500 mt-2 sm:mt-0 font-mono">Last Scan: {lastUpdated.toLocaleTimeString()}</div>
+               </header>
+
+               <div className="mb-6 flex items-center space-x-2 bg-gray-800 p-2 rounded-lg max-w-md">
+                   <Target className="text-cyan-400 ml-2" />
+                   {Object.keys(CITIES_DATA).map(cityName => (<button key={cityName} onClick={() => handleCityChange(cityName)} className={`w-full text-center px-4 py-2 rounded-md transition-colors duration-200 text-sm font-semibold ${activeCity === cityName ? 'bg-cyan-500 text-gray-900 shadow-lg' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}>{cityName}</button>))}
+               </div>
+
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                   <div className="lg:col-span-2 space-y-6">
+                       <CrisisAnalysisEngine data={cityData} cf={cf} isBifurcation={isBifurcation} />
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <InterventionSimulator currentCF={cf} />
+                           <CollaborationPanel />
+                       </div>
+                   </div>
+                   <div className="lg:col-span-1 space-y-6">
+                       <AlertBroadcaster isBifurcation={isBifurcation} networks={cityData.organizer_networks} />
+                       <TacticalMap city={activeCity} />
+                       <ValidationTracker city={activeCity} />
+                       <SystemStatus cityData={cityData} />
+                   </div>
+               </div>
+
+               <footer className="mt-8 bg-black rounded-lg p-4 font-mono text-sm border border-gray-700">
+                   <p className="text-green-400">🚀 DIALECTICAL ENGINE PRIMED</p>
+                   <p className="text-green-400">📡 Crisis alerts: <span className="text-white">ROUTED TO {cityData.organizer_networks.length} NETWORKS IN {activeCity.toUpperCase()}</span></p>
+                   {isBifurcation && (<p className="mt-2 bg-red-500 text-black p-2 rounded animate-pulse font-bold">💥 {activeCity.toUpperCase()}: CRISIS WINDOW DETECTED - MOBILIZE!</p>)}
+               </footer>
+           </div>
+       </main>
+   );
+}

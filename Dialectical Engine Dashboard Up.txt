@@ -1,0 +1,331 @@
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { ChevronsRight, AlertTriangle, Server, Users, Radio, Rss, Target, GitBranch, ShieldCheck, Zap } from 'lucide-react';
+
+// --- MOCK DATA & SIMULATION CONFIG ---
+// This simulates the data that would be scraped from various sources.
+const CITIES_DATA = {
+   Austin: {
+       commercial_vacancy: 0.28,
+       tech_layoffs: 15000,
+       budget_deficit: -110, // in millions
+       protest_density: 0.65,
+       risk_factor: 0.72,
+       pathway: "office_occupations",
+       organizer_networks: ["tenant_union@austin.org", "atx_mutual_aid@proton.me", "sunrise_austin@gmail.com"],
+   },
+   Denver: {
+       commercial_vacancy: 0.22,
+       tech_layoffs: 9500,
+       budget_deficit: -85, // in millions
+       protest_density: 0.55,
+       risk_factor: 0.68,
+       pathway: "general_strike",
+       organizer_networks: ["dsa_chapter@denver.org", "denver_unemployed@riseup.net"],
+   },
+   Portland: {
+       commercial_vacancy: 0.19,
+       tech_layoffs: 7800,
+       budget_deficit: -50, // in millions
+       protest_density: 0.78,
+       risk_factor: 0.61,
+       pathway: "office_occupations",
+       organizer_networks: ["street_medics@portland.signal.org", "pdx_housing_action@proton.me"],
+   }
+};
+
+const REVOLUTIONARY_PLAYBOOK = {
+   general_strike: ["Mobilize transit & teacher unions", "Coordinate rolling sickouts", "Establish strike funds", "Organize community support kitchens"],
+   office_occupations: ["Scout vacant corporate buildings", "Organize public housing assemblies", "Establish legal support network", "Coordinate with unhoused advocates"],
+   municipal_bankruptcy: ["Launch debt audit campaign", "Form neighborhood councils", "Propose participatory budgeting", "Demand public ownership of utilities"]
+};
+
+// --- CORE SYSTEM COMPONENTS ---
+
+// 1. LiveCrisisMonitor: Visualizes raw data ingestion
+const LiveCrisisMonitor = ({ data }) => {
+   const monitorData = [
+       { name: 'Comm. Vacancy', value: data.commercial_vacancy * 100, fill: '#ef4444' },
+       { name: 'Protest Density', value: data.protest_density * 100, fill: '#34d399' },
+   ];
+
+   return (
+       <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 h-full flex flex-col">
+           <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3">
+               <Rss size={18} className="mr-2" /> Live Crisis Monitor
+           </h3>
+           <div className="grid grid-cols-2 gap-4 text-center flex-grow">
+               <div className="bg-gray-900 p-3 rounded-md">
+                   <p className="text-sm text-gray-400">Tech Layoffs</p>
+                   <p className="text-2xl font-bold text-red-400">{data.tech_layoffs.toLocaleString()}</p>
+               </div>
+               <div className="bg-gray-900 p-3 rounded-md">
+                   <p className="text-sm text-gray-400">Budget Deficit (M)</p>
+                   <p className="text-2xl font-bold text-red-400">${Math.abs(data.budget_deficit)}</p>
+               </div>
+           </div>
+           <div className="h-40 mt-4">
+               <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={monitorData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                       <XAxis type="number" hide />
+                       <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                       <Tooltip
+                           cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
+                           contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #4b5563', borderRadius: '0.5rem' }}
+                           labelStyle={{ color: '#e5e7eb' }}
+                           formatter={(value) => [`${value.toFixed(1)}%`, null]}
+                       />
+                       <Bar dataKey="value" barSize={20} radius={[0, 5, 5, 0]}>
+                           {monitorData.map((entry, index) => (
+                               <Cell key={`cell-${index}`} fill={entry.fill} />
+                           ))}
+                       </Bar>
+                   </BarChart>
+               </ResponsiveContainer>
+           </div>
+       </div>
+   );
+};
+
+// 2. CrisisAnalysisEngine: Computes and displays the core logic (UPDATED by user)
+const CrisisAnalysisEngine = ({ data, cf, isBifurcation }) => {
+  const pathway = data.pathway;
+  const actions = REVOLUTIONARY_PLAYBOOK[pathway] || [];
+  
+  // Countdown timer state and logic
+  const [timeRemaining, setTimeRemaining] = useState(72 * 60 * 60); // 72 hours in seconds
+  const [timerActive, setTimerActive] = useState(false);
+
+  useEffect(() => {
+     if (isBifurcation && !timerActive) {
+        setTimeRemaining(72 * 60 * 60);
+        setTimerActive(true);
+     } else if (!isBifurcation) {
+        setTimerActive(false);
+     }
+
+     let interval;
+     if (timerActive) {
+        interval = setInterval(() => {
+           setTimeRemaining(prev => {
+              if (prev <= 1) {
+                 clearInterval(interval);
+                 setTimerActive(false);
+                 return 0;
+              }
+              return prev - 1;
+           });
+        }, 1000);
+     }
+
+     return () => clearInterval(interval);
+  }, [isBifurcation, timerActive]);
+
+  const formatTime = (seconds) => {
+     const days = Math.floor(seconds / (3600 * 24));
+     const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+     const minutes = Math.floor((seconds % 3600) / 60);
+     const secs = seconds % 60;
+     
+     return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  };
+
+  return (
+     <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 space-y-4">
+        <h3 className="text-lg font-semibold text-cyan-300 flex items-center">
+           <Zap size={18} className="mr-2" /> Analysis & Tactical Engine
+        </h3>
+        
+        {/* Corporate Flight Operator */}
+        <div className="bg-gray-900 p-3 rounded-md border-l-4 border-orange-400">
+           <p className="text-sm text-gray-400">Corporate Flight Index (CF)</p>
+           <p className={`text-3xl font-bold ${cf > 0.6 ? 'text-red-500 animate-pulse' : 'text-orange-400'}`}>
+              {cf.toFixed(3)}
+           </p>
+        </div>
+
+        {/* Crisis Predictor */}
+        <div className={`bg-gray-900 p-3 rounded-md border-l-4 ${isBifurcation ? 'border-red-500' : 'border-green-400'}`}>
+           <p className="text-sm text-gray-400">Phase Transition Prediction</p>
+           <div className="flex items-center mt-1">
+              <AlertTriangle size={20} className={`${isBifurcation ? 'text-red-500 animate-ping absolute' : 'text-green-400'} mr-3`} />
+              <AlertTriangle size={20} className={`${isBifurcation ? 'text-red-500' : 'text-green-400'} mr-3`} />
+              <p className={`text-xl font-bold ${isBifurcation ? 'text-red-500' : 'text-green-400'}`}>
+                 {isBifurcation ? "CRISIS WINDOW DETECTED" : "System Stable"}
+              </p>
+           </div>
+        </div>
+
+        {/* Countdown Timer */}
+        {isBifurcation && (
+           <div className="bg-gradient-to-b from-gray-900 via-red-900/50 to-gray-900 p-3 rounded-lg border border-red-600">
+              <p className="text-sm text-red-300 uppercase font-bold text-center">Crisis Window Closes In</p>
+              <p className="text-3xl font-bold text-white text-center mt-1 font-mono tracking-wider">
+                 {formatTime(timeRemaining)}
+              </p>
+              <div className="w-full bg-gray-700/50 h-2 rounded-full mt-2 overflow-hidden border border-black/20">
+                 <div 
+                    className="bg-gradient-to-r from-red-500 to-orange-500 h-full rounded-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${(timeRemaining / (72*3600)) * 100}%` }}
+                 ></div>
+              </div>
+           </div>
+        )}
+
+        {/* Liberation Pathway */}
+        {isBifurcation && (
+            <div className="bg-gradient-to-b from-red-900/50 to-red-800/50 p-4 rounded-lg border border-red-700">
+               <p className="text-sm text-red-300 uppercase font-bold">Liberation Pathway Calculated</p>
+               <p className="text-2xl font-bold text-white capitalize mt-1 mb-3">{pathway.replace('_', ' ')}</p>
+               <ul className="space-y-2">
+                  {actions.map((action, index) => (
+                      <li key={index} className="flex items-start">
+                          <ChevronsRight size={16} className="text-red-300 mr-2 mt-1 flex-shrink-0" />
+                          <span className="text-red-100">{action}</span>
+                      </li>
+                  ))}
+               </ul>
+            </div>
+        )}
+     </div>
+  );
+};
+
+// 3. Deployment & System Status
+const SystemStatus = ({ cityData }) => (
+   <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+       <h3 className="text-lg font-semibold text-cyan-300 flex items-center mb-3">
+           <Server size={18} className="mr-2" /> Deployment Status
+       </h3>
+       <div className="space-y-3 text-sm">
+           <div className="flex justify-between items-center">
+               <span className="text-gray-400 flex items-center"><GitBranch size={14} className="mr-2" />Revolutionary OS Stack</span>
+               <span className="font-mono text-green-400 bg-green-900/50 px-2 py-1 rounded text-xs">ONLINE</span>
+           </div>
+           <div className="flex justify-between items-center">
+               <span className="text-gray-400 flex items-center"><Radio size={14} className="mr-2" />City Monitoring</span>
+               <span className="font-mono text-green-400 bg-green-900/50 px-2 py-1 rounded text-xs">ACTIVE</span>
+           </div>
+            <div className="flex justify-between items-center">
+               <span className="text-gray-400 flex items-center"><Users size={14} className="mr-2" />Organizer Networks</span>
+               <span className="font-mono text-cyan-400 bg-cyan-900/50 px-2 py-1 rounded text-xs">
+                   {cityData.organizer_networks.length} Connected
+               </span>
+           </div>
+            <div className="flex justify-between items-center">
+               <span className="text-gray-400 flex items-center"><ShieldCheck size={14} className="mr-2" />Public Dashboard</span>
+               <a href="#/" className="font-mono text-cyan-400 hover:underline text-xs">http://revolution-forecast.org</a>
+           </div>
+       </div>
+   </div>
+);
+
+
+// --- MAIN APP COMPONENT ---
+export default function App() {
+   const [activeCity, setActiveCity] = useState("Austin");
+   const [cityData, setCityData] = useState(CITIES_DATA[activeCity]);
+   const [lastUpdated, setLastUpdated] = useState(new Date());
+
+   // Simulate real-time data fluctuations every 15 seconds
+   useEffect(() => {
+       const interval = setInterval(() => {
+           setCityData(prevData => {
+               const fluctuation = (Math.random() - 0.5) * 0.02;
+               return {
+                   ...prevData,
+                   commercial_vacancy: Math.max(0.1, prevData.commercial_vacancy + fluctuation),
+                   tech_layoffs: prevData.tech_layoffs + Math.floor((Math.random() - 0.5) * 500),
+                   budget_deficit: prevData.budget_deficit + Math.floor((Math.random() - 0.5) * 5),
+                   protest_density: Math.max(0.1, Math.min(0.9, prevData.protest_density - fluctuation)),
+               };
+           });
+           setLastUpdated(new Date());
+       }, 15000); // 15-minute crisis checks (sped up to 15s for demo)
+
+       return () => clearInterval(interval);
+   }, [activeCity]);
+
+   const handleCityChange = (cityName) => {
+       setActiveCity(cityName);
+       setCityData(CITIES_DATA[cityName]);
+   };
+
+   // Memoized calculations for performance
+   const { cf, isBifurcation } = useMemo(() => {
+       // 2. Contradiction Amplification (CorporateFlightOperator)
+       const computeLiveCF = (data) => {
+           return (data.commercial_vacancy * 0.4 +
+                   Math.abs(data.budget_deficit / 500) * 0.4 + // Normalize deficit
+                   Math.abs(data.tech_layoffs / 50000) * 0.2); // Normalize layoffs
+       };
+
+       // 3. Phase Transition Detection (CrisisPredictor)
+       const detectBifurcation = (cfValue, manifold) => {
+           // Simplified manifold logic for demo
+           const contradiction_field_norm = manifold.protest_density * 3 + manifold.risk_factor;
+           return cfValue > 0.25 && contradiction_field_norm > 2.0;
+       };
+       
+       const calculatedCF = computeLiveCF(cityData);
+       const bifurcationStatus = detectBifurcation(calculatedCF, cityData);
+
+       return { cf: calculatedCF, isBifurcation: bifurcationStatus };
+   }, [cityData]);
+
+   return (
+       <main className="bg-gray-900 text-white min-h-screen font-sans p-4 sm:p-6 lg:p-8">
+           <div className="max-w-7xl mx-auto">
+               {/* Header */}
+               <header className="mb-6 pb-4 border-b border-red-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                   <div>
+                       <h1 className="text-3xl font-bold text-red-500">Dialectical Nervous System</h1>
+                       <p className="text-gray-400">Cognitive Infrastructure for Liberation</p>
+                   </div>
+                    <div className="text-xs text-gray-500 mt-2 sm:mt-0 font-mono">
+                       Last Scan: {lastUpdated.toLocaleTimeString()}
+                   </div>
+               </header>
+
+               {/* City Selector */}
+               <div className="mb-6 flex items-center space-x-2 bg-gray-800 p-2 rounded-lg max-w-md">
+                   <Target className="text-cyan-400 ml-2" />
+                   {Object.keys(CITIES_DATA).map(cityName => (
+                       <button
+                           key={cityName}
+                           onClick={() => handleCityChange(cityName)}
+                           className={`w-full text-center px-4 py-2 rounded-md transition-colors duration-200 text-sm font-semibold
+                               ${activeCity === cityName ? 'bg-cyan-500 text-gray-900 shadow-lg' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
+                       >
+                           {cityName}
+                       </button>
+                   ))}
+               </div>
+
+               {/* Main Dashboard Grid */}
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                   <div className="lg:col-span-2">
+                       <CrisisAnalysisEngine data={cityData} cf={cf} isBifurcation={isBifurcation} />
+                   </div>
+                   <div className="space-y-6">
+                        <LiveCrisisMonitor data={cityData} />
+                        <SystemStatus cityData={cityData} />
+                   </div>
+               </div>
+
+               {/* Execution Command Output */}
+               <footer className="mt-8 bg-black rounded-lg p-4 font-mono text-sm border border-gray-700">
+                   <p className="text-green-400">🚀 DIALECTICAL ENGINE PRIMED</p>
+                   <p className="text-green-400">⏱️ Real-time monitoring: <span className="text-white">ONLINE</span></p>
+                   <p className="text-green-400">📡 Crisis alerts: <span className="text-white">ROUTED TO {cityData.organizer_networks.length} ORGANIZER NETWORKS IN {activeCity.toUpperCase()}</span></p>
+                   <p className="text-green-400">🌐 Public dashboard: <a href="#/" className="text-cyan-400 hover:underline">http://revolution-forecast.org</a></p>
+                   {isBifurcation && (
+                       <p className="mt-2 bg-red-500 text-black p-2 rounded animate-pulse font-bold">
+                           💥 {activeCity.toUpperCase()}: CRISIS WINDOW DETECTED - MOBILIZE!
+                       </p>
+                   )}
+               </footer>
+           </div>
+       </main>
+   );
+}
